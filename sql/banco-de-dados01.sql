@@ -1,17 +1,14 @@
--- =====================================================
+
 -- Projeto: Banco de Dados 01
 -- Repositório: banco-de-dados01
--- =====================================================
+-- TESTETESTE
 
--- Crie o BD (substitua <Num>)
 CREATE DATABASE IF NOT EXISTS equipe01
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 USE equipe01;
 
--- =========================
--- 1) Tabelas de referência
--- =========================
+
 CREATE TABLE curso (
   cod_curso INT PRIMARY KEY,
   nome_curso VARCHAR(120) NOT NULL
@@ -32,9 +29,7 @@ CREATE TABLE subcategoria (
   UNIQUE KEY uk_subcat_cat_desc (cod_categoria, descricao)
 );
 
--- =========================
--- 2) Acervo
--- =========================
+
 CREATE TABLE livro (
   isbn VARCHAR(20) PRIMARY KEY,
   titulo VARCHAR(200) NOT NULL,
@@ -52,7 +47,7 @@ CREATE TABLE livro (
     ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- garante que a subcategoria do livro pertence à mesma categoria do livro
+
 DELIMITER $$
 CREATE TRIGGER trg_livro_subcat_mesma_categoria
 BEFORE INSERT ON livro
@@ -87,7 +82,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Exemplar: PK (isbn, num_exemplar) => num_exemplar sequencial por livro
+
 CREATE TABLE exemplar (
   isbn VARCHAR(20) NOT NULL,
   num_exemplar INT NOT NULL,
@@ -98,7 +93,7 @@ CREATE TABLE exemplar (
     ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- Autor e relacionamento N:N com livro, marcando autor principal
+
 CREATE TABLE autor (
   id_autor INT AUTO_INCREMENT PRIMARY KEY,
   nome VARCHAR(120) NOT NULL,
@@ -120,7 +115,7 @@ CREATE TABLE livro_autor (
     ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- garante 1 único autor principal por livro
+
 DELIMITER $$
 CREATE TRIGGER trg_um_autor_principal_por_livro
 BEFORE INSERT ON livro_autor
@@ -149,7 +144,6 @@ BEGIN
       WHERE isbn = NEW.isbn AND principal = 1
         AND id_autor <> NEW.id_autor
 
-> Ádrian,:
 ) THEN
       SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Já existe autor principal para este livro.';
@@ -158,9 +152,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- =========================
--- 3) Usuários (superclasse + subclasses)
--- =========================
+--USUARIOS
 CREATE TABLE usuario (
   id_usuario INT AUTO_INCREMENT PRIMARY KEY,
   nome VARCHAR(120) NOT NULL,
@@ -215,7 +207,7 @@ CREATE TABLE funcionario (
     ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- trigger: ao cadastrar aluno, impedir se data_conclusao_prevista já foi atingida
+--TRIGGER AO CADAST. ALUNO
 DELIMITER $$
 CREATE TRIGGER trg_bloqueia_aluno_formado
 BEFORE INSERT ON aluno
@@ -228,9 +220,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- =========================
--- 4) Parâmetros por tipo (prazo, limite, multa)
--- =========================
+-- PARAMETRO POR TIPO
 CREATE TABLE tipo_politica (
   tipo ENUM('ALUNO','PROFESSOR','FUNCIONARIO') PRIMARY KEY,
   max_livros INT NOT NULL,
@@ -243,9 +233,7 @@ INSERT INTO tipo_politica (tipo, max_livros, prazo_dias, multa_dia) VALUES
 ('FUNCIONARIO', 4, 21, 1.50),
 ('PROFESSOR', 5, 30, 2.00);
 
--- =========================
--- 5) Reservas
--- =========================
+
 CREATE TABLE reserva (
   id_reserva INT AUTO_INCREMENT PRIMARY KEY,
   id_usuario INT NOT NULL,
@@ -261,7 +249,6 @@ CREATE TABLE reserva (
     ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- impedir reserva se usuário estiver inativo
 DELIMITER $$
 CREATE TRIGGER trg_reserva_usuario_ativo
 BEFORE INSERT ON reserva
@@ -274,16 +261,13 @@ BEGIN
 END$$
 DELIMITER ;
 
--- =========================
--- 6) Empréstimos e devolução com multa
--- =========================
+
 CREATE TABLE emprestimo (
   id_emprestimo INT AUTO_INCREMENT PRIMARY KEY,
   id_usuario_responsavel INT NOT NULL,
   data_inicio DATE NOT NULL DEFAULT (CURRENT_DATE),
   data_prevista DATE NOT NULL,
 
-> Ádrian,:
 status_emprestimo ENUM('ABERTO','FECHADO') NOT NULL DEFAULT 'ABERTO',
 
   CONSTRAINT fk_emp_usuario
@@ -309,9 +293,7 @@ CREATE TABLE emprestimo_item (
     ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- Regras:
--- (a) usuário precisa estar ativo pra emprestar
--- (b) respeitar limite max_livros por tipo (considerando itens em empréstimos ABERTOS)
+-- ALGUMASS REGRAS
 DELIMITER $$
 CREATE TRIGGER trg_valida_emprestimo_usuario_limite
 BEFORE INSERT ON emprestimo
@@ -347,12 +329,9 @@ BEGIN
     AND e.status_emprestimo = 'ABERTO'
     AND ei.data_devolucao_real IS NULL;
 
-  -- O empréstimo pode ter vários itens; o limite final é checado quando inserir itens.
-  -- Aqui só garantimos que existe política e usuário ativo.
 END$$
 DELIMITER ;
 
--- Ao inserir item no empréstimo: checa limite e disponibilidade do exemplar
 DELIMITER $$
 CREATE TRIGGER trg_valida_item_emprestimo
 BEFORE INSERT ON emprestimo_item
@@ -398,7 +377,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Ao inserir item: marca exemplar como EMPRESTADO
 DELIMITER $$
 CREATE TRIGGER trg_marca_exemplar_emprestado
 AFTER INSERT ON emprestimo_item
@@ -410,7 +388,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Ao dar baixa (update data_devolucao_real): calcula multa e libera exemplar
 DELIMITER $$
 CREATE TRIGGER trg_calcula_multa_e_libera
 BEFORE UPDATE ON emprestimo_item
@@ -419,7 +396,6 @@ BEGIN
   DECLARE v_prevista DATE;
   DECLARE v_usuario INT;
 
-> Ádrian,:
 DECLARE v_tipo ENUM('ALUNO','PROFESSOR','FUNCIONARIO');
   DECLARE v_taxa DECIMAL(10,2);
   DECLARE v_atraso INT;
@@ -459,7 +435,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- (Opcional) Fechar empréstimo automaticamente quando todos os itens forem devolvidos
 DELIMITER $$
 CREATE TRIGGER trg_fecha_emprestimo
 AFTER UPDATE ON emprestimo_item
@@ -481,11 +456,7 @@ BEGIN
 END$$
 DELIMITER ;
 
--- =========================
--- 7) Visões (lists pedidas)
--- =========================
-
--- Livros por categoria (com autores agrupados)
+--SEPARANDO POR CATEGoria
 CREATE VIEW vw_livros_por_categoria AS
 SELECT
   c.cod_categoria,
@@ -549,7 +520,7 @@ FROM autor a
 JOIN livro_autor la ON la.id_autor = a.id_autor
 JOIN livro l ON l.isbn = la.isbn;
 
--- Professores por curso
+-- profs por curso
 CREATE VIEW vw_professores_por_curso AS
 SELECT
   c.cod_curso,
@@ -562,7 +533,7 @@ FROM professor p
 JOIN usuario u ON u.id_usuario = p.id_usuario
 JOIN curso c ON c.cod_curso = p.cod_curso;
 
--- Reservas por livro (consultável por ISBN/título via WHERE na aplicação)
+-- reservas por livross
 CREATE VIEW vw_reservas_por_livro AS
 SELECT
   r.isbn,
